@@ -45,3 +45,4 @@ describe("Pricing and Cost-Sharing Calculations", () => {
     expect(PRICING_CONFIG.MAX_SEATS).toBe(2);
   });
 });
+

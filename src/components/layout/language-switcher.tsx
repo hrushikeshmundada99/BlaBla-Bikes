@@ -83,3 +83,4 @@ export function LanguageSwitcher({ className }: { className?: string }) {
     </div>
   );
 }
+

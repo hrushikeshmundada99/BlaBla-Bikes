@@ -30,3 +30,4 @@ export function formatTime(date: Date | string, locale = "en-IN"): string {
     hour12: true,
   }).format(d);
 }
+

@@ -71,3 +71,4 @@ export function calculateSuggestedContribution(distanceKm: number): number {
   );
   return Math.max(calculated, PRICING_CONFIG.MIN_CONTRIBUTION_INR);
 }
+

@@ -53,3 +53,4 @@ describe("i18n Translation Catalogs Integrity", () => {
     expect(mrCatalog.common.costSharingOnly).toContain("खर्च-विभागणी");
   });
 });
+

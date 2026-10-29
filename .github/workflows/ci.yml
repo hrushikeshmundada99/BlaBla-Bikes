@@ -44,3 +44,4 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "dummy-key"
           DATABASE_URL: "postgresql://postgres:postgres@localhost:54322/postgres"
           RESEND_API_KEY: "re_test_key"
+

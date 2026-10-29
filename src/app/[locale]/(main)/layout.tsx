@@ -7,3 +7,4 @@ export default function MainLayout({
 }) {
   return <AppShell>{children}</AppShell>;
 }
+

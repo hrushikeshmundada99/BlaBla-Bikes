@@ -41,3 +41,4 @@ export function RideCardSkeleton() {
     </div>
   );
 }
+

@@ -154,3 +154,4 @@ export const NASHIK_PLACES: NashikPlace[] = [
     longitude: 73.8576,
   },
 ];
+

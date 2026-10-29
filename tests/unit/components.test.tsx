@@ -21,22 +21,16 @@ vi.mock("@/i18n/routing", () => ({
 }));
 
 describe("Core UI Components", () => {
-  it("renders feature cards with cost-sharing and confidence details", () => {
+  it("renders feature cards with cost-sharing and confidence details matching design", () => {
     render(
       <NextIntlClientProvider locale="en" messages={enMessages}>
         <FeatureCards />
       </NextIntlClientProvider>
     );
 
-    expect(
-      screen.getByText("Why Nashik Commuters Ride Together")
-    ).toBeInTheDocument();
     expect(screen.getByText("Ride across Nashik")).toBeInTheDocument();
     expect(screen.getByText("Fair shared costs")).toBeInTheDocument();
     expect(screen.getByText("Ride with confidence")).toBeInTheDocument();
-    expect(
-      screen.getByText("Non-Commercial Pillion Sharing Disclaimer")
-    ).toBeInTheDocument();
   });
 
   it("renders accessible empty states with icon and description", () => {

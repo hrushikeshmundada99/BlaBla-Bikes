@@ -66,3 +66,4 @@ if (hasError) {
   console.log("\n✅ All i18n keys are fully consistent across en, hi, and mr!");
   process.exit(0);
 }
+
