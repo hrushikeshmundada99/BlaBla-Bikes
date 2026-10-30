@@ -1,5 +1,8 @@
+import { createClient } from "@/lib/supabase/server";
 import { setRequestLocale } from "next-intl/server";
-import { User, ShieldCheck } from "lucide-react";
+import { redirect } from "@/i18n/routing";
+import { ProfileForm } from "./profile-form";
+import { UnverifiedEmailBanner } from "@/components/auth/unverified-email-banner";
 
 export default async function ProfilePage({
   params,
@@ -9,33 +12,53 @@ export default async function ProfilePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect({ href: "/login", locale });
+  }
+
+  // Fetch full profile and emergency contacts
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", user!.id)
+    .single();
+
+  const { data: contacts } = await supabase
+    .from("emergency_contacts")
+    .select("*")
+    .eq("user_id", user!.id)
+    .order("created_at", { ascending: true });
+
+  const isEmailVerified = Boolean(user!.email_confirmed_at);
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
+      {!isEmailVerified && <UnverifiedEmailBanner />}
+
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">User Profile</h1>
-        <p className="text-sm text-slate-500">
-          Manage your account, verification status, and emergency contacts.
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">User Profile</h1>
+        <p className="text-xs sm:text-sm text-slate-500">
+          Manage your personal commuter details, verification, and emergency safety contacts.
         </p>
       </div>
 
-      <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-soft space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-blue-50 text-[#1853DB] flex items-center justify-center font-bold text-xl">
-            <User className="w-8 h-8" />
-          </div>
-          <div>
-            <h3 className="text-lg font-bold text-slate-900">Guest User</h3>
-            <p className="text-xs text-slate-500">Nashik Commuter</p>
-          </div>
-        </div>
-
-        <div className="border-t border-slate-100 pt-4">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-600">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-            <span>Passenger Account (Unregistered)</span>
-          </div>
-        </div>
-      </div>
+      <ProfileForm
+        user={user!}
+        profile={profile || {
+          id: user!.id,
+          full_name: user!.user_metadata?.full_name || "Commuter",
+          avatar_url: user!.user_metadata?.avatar_url || null,
+          bio: "",
+          phone: "",
+          preferred_language: locale,
+        }}
+        contacts={contacts || []}
+      />
     </div>
   );
 }

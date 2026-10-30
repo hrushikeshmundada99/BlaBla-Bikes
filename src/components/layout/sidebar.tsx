@@ -2,8 +2,10 @@
 
 import * as React from "react";
 import { useTranslations } from "next-intl";
-import { Link, usePathname } from "@/i18n/routing";
+import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
+import { logoutAction } from "@/app/actions/auth";
 import {
   Home,
   LayoutGrid,
@@ -13,6 +15,8 @@ import {
   MessageSquare,
   User,
   LogIn,
+  LogOut,
+  Bike,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -23,6 +27,31 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const t = useTranslations("nav");
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+
+  React.useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => {
+      setIsLoggedIn(Boolean(data.user));
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(Boolean(session?.user));
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    if (onClose) onClose();
+    await logoutAction();
+    setIsLoggedIn(false);
+    router.push("/login");
+    router.refresh();
+  };
 
   const mainNav = [
     { href: "/", label: t("home"), icon: Home },
@@ -33,12 +62,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const riderNav = [
     { href: "/rides/offer", label: t("offerRide"), icon: PlusCircle },
+    { href: "/onboarding/rider", label: "Rider Verification", icon: Bike },
     { href: "/chat", label: t("coordinationChat"), icon: MessageSquare },
     { href: "/profile", label: t("profile"), icon: User },
-  ];
-
-  const accountNav = [
-    { href: "/login", label: "Login / Sign Up", icon: LogIn },
   ];
 
   const isLinkActive = (href: string) => {
@@ -140,31 +166,30 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               {t("accountSection")}
             </h4>
             <nav className="space-y-1">
-              {accountNav.map((item) => {
-                const active = isLinkActive(item.href);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
-                      active
-                        ? "bg-[#EBF3FF] text-[#1853DB] font-semibold"
-                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        "w-4 h-4",
-                        active ? "text-[#1853DB]" : "text-slate-500"
-                      )}
-                    />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
+              {isLoggedIn ? (
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors text-left"
+                >
+                  <LogOut className="w-4 h-4 text-red-500" />
+                  <span>{t("logout")}</span>
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={onClose}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
+                    isLinkActive("/login")
+                      ? "bg-[#EBF3FF] text-[#1853DB] font-semibold"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  )}
+                >
+                  <LogIn className="w-4 h-4 text-slate-500" />
+                  <span>Login / Sign Up</span>
+                </Link>
+              )}
             </nav>
           </div>
         </div>
