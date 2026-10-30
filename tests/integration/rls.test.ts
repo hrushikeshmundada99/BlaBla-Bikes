@@ -70,5 +70,18 @@ describe("Database RLS & Security Policies Verification", () => {
     expect(rlsSql).toContain("'rider-docs'");
     expect(rlsSql).toContain("CREATE POLICY \"rider_docs_select_owner_or_admin\"");
   });
+
+  it("verifies Phase 3 migration for ride contribution 0..500 and idempotency key", () => {
+    const phase3Sql = fs.readFileSync(
+      path.join(migrationsDir, "20261030000002_rides_phase3.sql"),
+      "utf-8"
+    );
+
+    expect(phase3Sql).toContain("ALTER TABLE rides ALTER COLUMN contribution_inr TYPE integer");
+    expect(phase3Sql).toContain("CHECK (contribution_inr >= 0 AND contribution_inr <= 500)");
+    expect(phase3Sql).toContain("ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(64)");
+    expect(phase3Sql).toContain("CREATE UNIQUE INDEX IF NOT EXISTS idx_rides_rider_idempotency");
+    expect(phase3Sql).toContain("CREATE OR REPLACE FUNCTION haversine_distance_km");
+  });
 });
 

@@ -141,7 +141,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps) {
 
           {/* Find a ride link */}
           <Link
-            href="/rides/find"
+            href="/rides"
             className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-slate-700 hover:text-[#1853DB] transition-colors"
           >
             <Search className="w-4 h-4 text-slate-500" />
@@ -149,7 +149,7 @@ export function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps) {
           </Link>
 
           {/* Outlined Pill "Offer a ride" button matching Image 2 */}
-          <Link href="/rides/offer" className="hidden sm:inline-block">
+          <Link href="/offer" className="hidden sm:inline-block">
             <div className="inline-flex items-center gap-2 rounded-full border border-[#1853DB] text-[#1853DB] hover:bg-blue-50/70 px-4 py-1.5 text-xs sm:text-sm font-semibold transition-colors">
               <PlusCircle className="w-4 h-4" />
               <span>{t("nav.offerRide")}</span>

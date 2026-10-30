@@ -5,7 +5,12 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY is required"),
   NEXT_PUBLIC_SITE_URL: z.string().url("NEXT_PUBLIC_SITE_URL must be a valid URL").default("http://localhost:3000"),
   NEXT_PUBLIC_DEFAULT_LOCALE: z.enum(["en", "hi", "mr"]).default("en"),
-  NEXT_PUBLIC_FUEL_COST_PER_KM_CEILING: z.string().default("4.00"),
+  NEXT_PUBLIC_TILE_URL: z
+    .string()
+    .default("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"),
+  NEXT_PUBLIC_TILE_ATTRIBUTION: z
+    .string()
+    .default('&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'),
 });
 
 const serverEnvSchema = clientEnvSchema.extend({
@@ -32,7 +37,8 @@ function validateEnv() {
       NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
       NEXT_PUBLIC_DEFAULT_LOCALE: process.env.NEXT_PUBLIC_DEFAULT_LOCALE,
-      NEXT_PUBLIC_FUEL_COST_PER_KM_CEILING: process.env.NEXT_PUBLIC_FUEL_COST_PER_KM_CEILING,
+      NEXT_PUBLIC_TILE_URL: process.env.NEXT_PUBLIC_TILE_URL,
+      NEXT_PUBLIC_TILE_ATTRIBUTION: process.env.NEXT_PUBLIC_TILE_ATTRIBUTION,
     });
     if (!parsed.success) {
       console.error("❌ Invalid client environment variables:", parsed.error.format());
@@ -43,4 +49,3 @@ function validateEnv() {
 }
 
 export const env = validateEnv();
-

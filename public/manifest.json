@@ -1,0 +1,17 @@
+{
+  "name": "BlaBlaBikes - Nashik Motorcycle Ridesharing",
+  "short_name": "BlaBlaBikes",
+  "description": "Peer-to-peer motorcycle ride-sharing and legal fuel cost-sharing for Nashik commuters.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1853DB",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
+

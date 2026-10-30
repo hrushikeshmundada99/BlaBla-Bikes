@@ -5,6 +5,7 @@ import {
   text,
   boolean,
   smallint,
+  integer,
   numeric,
   timestamp,
   jsonb,
@@ -93,10 +94,11 @@ export const rides = pgTable(
     departAt: timestamp("depart_at", { withTimezone: true }).notNull(),
     seatsTotal: smallint("seats_total").notNull(),
     seatsAvailable: smallint("seats_available").notNull(),
-    contributionInr: numeric("contribution_inr", { precision: 6, scale: 2 }).notNull(),
+    contributionInr: integer("contribution_inr").notNull(),
     distanceKm: numeric("distance_km", { precision: 5, scale: 2 }).notNull(),
     notes: varchar("notes", { length: 500 }),
     helmetAvailable: boolean("helmet_available").default(true).notNull(),
+    idempotencyKey: varchar("idempotency_key", { length: 64 }),
     status: rideStatusEnum("status").default("open").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -108,7 +110,11 @@ export const rides = pgTable(
       "check_seats_available",
       sql`${table.seatsAvailable} >= 0 AND ${table.seatsAvailable} <= ${table.seatsTotal}`
     ),
-    check("check_contribution_non_neg", sql`${table.contributionInr} >= 0`),
+    check(
+      "check_contribution_bounds",
+      sql`${table.contributionInr} >= 0 AND ${table.contributionInr} <= 500`
+    ),
+    uniqueIndex("idx_rides_rider_idempotency").on(table.riderId, table.idempotencyKey),
     index("idx_rides_search").on(table.fromPlace, table.toPlace, table.departAt),
     index("idx_rides_rider").on(table.riderId),
     index("idx_rides_status_depart").on(table.status, table.departAt),

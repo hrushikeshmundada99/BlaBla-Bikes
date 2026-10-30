@@ -20,7 +20,7 @@ export function HeroSearch() {
     if (toLocation) params.set("to", toLocation);
     if (tripDate) params.set("date", tripDate);
 
-    router.push(`/rides/find?${params.toString()}`);
+    router.push(`/rides?${params.toString()}`);
   };
 
   return (

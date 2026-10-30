@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { loginSchema, signupSchema } from "@/lib/validations/auth";
 import { profileSchema, emergencyContactSchema } from "@/lib/validations/profile";
 import { riderOnboardingSchema, normalizeRegNumber } from "@/lib/validations/rider";
+import { createRideSchema } from "@/lib/validations/rides";
 
 describe("Phase 2 Zod Validations", () => {
   describe("Auth Validation", () => {
@@ -86,6 +87,111 @@ describe("Phase 2 Zod Validations", () => {
         helmetAvailable: true,
       });
       expect(invalid.success).toBe(false);
+    });
+  });
+
+  describe("Phase 3 Ride Creation Validation", () => {
+    const futureValidDepart = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+
+    const baseValidInput = {
+      fromPlace: "CBS Shalimar",
+      toPlace: "Nashik Road Railway Station",
+      fromLat: 19.9975,
+      fromLng: 73.7898,
+      toLat: 19.9535,
+      toLng: 73.8447,
+      departAt: futureValidDepart,
+      seatsTotal: 1,
+      contributionInr: 30,
+      helmetAvailable: true,
+      notes: "Will wait near main entrance.",
+    };
+
+    it("accepts valid ride with whole rupee contribution", () => {
+      const res = createRideSchema.safeParse(baseValidInput);
+      expect(res.success).toBe(true);
+    });
+
+    it("accepts free rides (contribution ₹0)", () => {
+      const res = createRideSchema.safeParse({
+        ...baseValidInput,
+        contributionInr: 0,
+      });
+      expect(res.success).toBe(true);
+    });
+
+    it("accepts maximum contribution of ₹500", () => {
+      const res = createRideSchema.safeParse({
+        ...baseValidInput,
+        contributionInr: 500,
+      });
+      expect(res.success).toBe(true);
+    });
+
+    it("rejects contribution above ₹500 or below ₹0", () => {
+      expect(
+        createRideSchema.safeParse({ ...baseValidInput, contributionInr: 501 }).success
+      ).toBe(false);
+      expect(
+        createRideSchema.safeParse({ ...baseValidInput, contributionInr: -5 }).success
+      ).toBe(false);
+    });
+
+    it("rejects non-integer contributions (e.g. 12.50)", () => {
+      const res = createRideSchema.safeParse({
+        ...baseValidInput,
+        contributionInr: 12.5,
+      });
+      expect(res.success).toBe(false);
+    });
+
+    it("rejects identical pickup and destination", () => {
+      const res = createRideSchema.safeParse({
+        ...baseValidInput,
+        fromPlace: "CBS Shalimar",
+        toPlace: "cbs shalimar",
+      });
+      expect(res.success).toBe(false);
+    });
+
+    it("rejects pickup and destination points within 300 meters", () => {
+      // Points ~50 meters apart
+      const res = createRideSchema.safeParse({
+        ...baseValidInput,
+        fromLat: 19.9975,
+        fromLng: 73.7898,
+        toLat: 19.9977,
+        toLng: 73.7899,
+      });
+      expect(res.success).toBe(false);
+    });
+
+    it("restricts pillion seats to 1 or 2 (rejects 0 or 3)", () => {
+      expect(createRideSchema.safeParse({ ...baseValidInput, seatsTotal: 0 }).success).toBe(false);
+      expect(createRideSchema.safeParse({ ...baseValidInput, seatsTotal: 3 }).success).toBe(false);
+      expect(createRideSchema.safeParse({ ...baseValidInput, seatsTotal: 2 }).success).toBe(true);
+    });
+
+    it("rejects departures less than 15 minutes ahead or in the past", () => {
+      const pastTime = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+      const tooSoon = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+
+      expect(createRideSchema.safeParse({ ...baseValidInput, departAt: pastTime }).success).toBe(false);
+      expect(createRideSchema.safeParse({ ...baseValidInput, departAt: tooSoon }).success).toBe(false);
+    });
+
+    it("rejects departures more than 60 days in the future", () => {
+      const farFuture = new Date(Date.now() + 65 * 24 * 60 * 60 * 1000).toISOString();
+      expect(createRideSchema.safeParse({ ...baseValidInput, departAt: farFuture }).success).toBe(false);
+    });
+
+    it("accepts Devanagari place names", () => {
+      const res = createRideSchema.safeParse({
+        ...baseValidInput,
+        fromPlace: "सीबीएस (मध्यवर्ती बस स्थानक)",
+        toPlace: "कॅनडा कॉर्नर",
+      });
+      expect(res.success).toBe(true);
     });
   });
 });

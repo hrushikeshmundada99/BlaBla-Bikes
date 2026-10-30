@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
-import { NASHIK_PLACES } from "../src/lib/constants/nashik-places.js";
-import { calculateDistanceKm, calculateSuggestedContribution } from "../src/lib/constants/pricing.js";
+import { NASHIK_CURATED_PLACES } from "../src/data/nashik-places";
+import { haversineKm } from "../src/lib/geo";
+import { suggestedShareInr } from "../src/config/rides";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
@@ -251,26 +252,35 @@ async function seed() {
     for (let i = 0; i < 30; i++) {
       const riderId = approvedRiderIds[i % approvedRiderIds.length];
 
-      // Pick two distinct locations from NASHIK_PLACES
-      const fromIdx = (i * 3) % NASHIK_PLACES.length;
-      let toIdx = (fromIdx + 4) % NASHIK_PLACES.length;
-      if (fromIdx === toIdx) toIdx = (toIdx + 1) % NASHIK_PLACES.length;
+      // Pick two distinct locations from NASHIK_CURATED_PLACES
+      const fromIdx = (i * 3) % NASHIK_CURATED_PLACES.length;
+      let toIdx = (fromIdx + 4) % NASHIK_CURATED_PLACES.length;
+      if (fromIdx === toIdx) toIdx = (toIdx + 1) % NASHIK_CURATED_PLACES.length;
 
-      const fromPlace = NASHIK_PLACES[fromIdx];
-      const toPlace = NASHIK_PLACES[toIdx];
+      const fromPlace = NASHIK_CURATED_PLACES[fromIdx];
+      const toPlace = NASHIK_CURATED_PLACES[toIdx];
 
-      const distanceKm = calculateDistanceKm(
+      const straightLine = haversineKm(
         fromPlace.latitude,
         fromPlace.longitude,
         toPlace.latitude,
         toPlace.longitude
       );
+      const distanceKm = Math.max(1, Math.round(straightLine * 1.3 * 10) / 10);
+      const seats = (i % 3 === 0) ? 2 : 1;
 
-      const contribution = calculateSuggestedContribution(distanceKm);
+      // Varied fuel contributions including ₹0 (free rides)
+      let contribution: number;
+      if (i % 6 === 0) {
+        contribution = 0; // Free ride
+      } else {
+        const base = suggestedShareInr(distanceKm, seats);
+        contribution = Math.min(500, Math.max(0, base + ((i % 3) - 1) * 5));
+      }
 
-      // Distribute departures over the next 5 days at peak commute hours (8:30 AM to 7:00 PM)
-      const dayOffset = Math.floor(i / 6) + 1;
-      const hour = 8 + (i % 5) * 2; // 8, 10, 12, 14, 16
+      // Distribute departures over the next 7 days in future IST hours
+      const dayOffset = Math.floor(i / 5) + 1; // 1 to 7 days in future
+      const hour = 8 + (i % 6) * 2; // 8, 10, 12, 14, 16, 18
       const minute = (i % 2 === 0) ? 15 : 45;
 
       const departAt = new Date(now);
@@ -281,17 +291,17 @@ async function seed() {
         rider_id: riderId,
         from_place: fromPlace.name,
         to_place: toPlace.name,
-        from_lat: fromPlace.latitude,
-        from_lng: fromPlace.longitude,
-        to_lat: toPlace.latitude,
-        to_lng: toPlace.longitude,
+        from_lat: fromPlace.latitude.toString(),
+        from_lng: fromPlace.longitude.toString(),
+        to_lat: toPlace.latitude.toString(),
+        to_lng: toPlace.longitude.toString(),
         depart_at: departAt.toISOString(),
-        seats_total: (i % 3 === 0) ? 2 : 1,
-        seats_available: (i % 3 === 0) ? 2 : 1,
+        seats_total: seats,
+        seats_available: seats,
         contribution_inr: contribution,
-        distance_km: distanceKm,
-        notes: `Leaving on time near ${fromPlace.name.split(" ")[0]}. ISI helmet available for co-passenger.`,
-        helmet_available: true,
+        distance_km: distanceKm.toString(),
+        notes: `Leaving on time near ${fromPlace.name.split(" ")[0]}. Spare ISI helmet available for pillion passenger.`,
+        helmet_available: i % 5 !== 0,
         status: "open",
       });
     }

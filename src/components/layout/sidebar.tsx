@@ -56,12 +56,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const mainNav = [
     { href: "/", label: t("home"), icon: Home },
     { href: "/dashboard", label: t("dashboard"), icon: LayoutGrid },
-    { href: "/rides/find", label: t("findRides"), icon: Search },
-    { href: "/rides/my-rides", label: t("myRides"), icon: Calendar },
+    { href: "/rides", label: t("findRides"), icon: Search },
+    { href: "/rides/my", label: t("myRides"), icon: Calendar },
   ];
 
   const riderNav = [
-    { href: "/rides/offer", label: t("offerRide"), icon: PlusCircle },
+    { href: "/offer", label: t("offerRide"), icon: PlusCircle },
     { href: "/onboarding/rider", label: "Rider Verification", icon: Bike },
     { href: "/chat", label: t("coordinationChat"), icon: MessageSquare },
     { href: "/profile", label: t("profile"), icon: User },

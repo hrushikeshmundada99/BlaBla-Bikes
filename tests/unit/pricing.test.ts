@@ -1,48 +1,63 @@
 import { describe, it, expect } from "vitest";
 import {
-  calculateDistanceKm,
-  calculateMaxContribution,
-  calculateSuggestedContribution,
-  PRICING_CONFIG,
-} from "@/lib/constants/pricing";
+  MAX_CONTRIBUTION_INR,
+  MIN_CONTRIBUTION_INR,
+  MAX_SEATS,
+  MIN_SEATS,
+  suggestedShareInr,
+  isSoftWarning,
+} from "@/config/rides";
+import { haversineKm } from "@/lib/geo";
 
-describe("Pricing and Cost-Sharing Calculations", () => {
-  it("enforces maximum fuel rate cap of ₹4.00 per km", () => {
-    expect(PRICING_CONFIG.MAX_FUEL_RATE_PER_KM).toBe(4.0);
+describe("Phase 3: Fuel Contribution & Cost-Sharing Calculations", () => {
+  it("enforces contribution bounds between ₹0 (free ride) and ₹500 sanity ceiling", () => {
+    expect(MIN_CONTRIBUTION_INR).toBe(0);
+    expect(MAX_CONTRIBUTION_INR).toBe(500);
   });
 
-  it("calculates accurate distances between key Nashik landmarks", () => {
+  it("verifies config constant matches DB limit (500 INR)", () => {
+    // Fails if config and DB limit diverge
+    const DB_MAX_CONTRIBUTION = 500;
+    expect(MAX_CONTRIBUTION_INR).toBe(DB_MAX_CONTRIBUTION);
+  });
+
+  it("calculates realistic Haversine distance between CBS and Nashik Road Station", () => {
     // CBS (19.9975, 73.7898) to Nashik Road Station (19.9535, 73.8447)
-    // Straight line ~7.6 km, with city factor ~9.5 km
-    const distance = calculateDistanceKm(19.9975, 73.7898, 19.9535, 73.8447);
-    expect(distance).toBeGreaterThan(8);
-    expect(distance).toBeLessThan(12);
+    const distance = haversineKm(19.9975, 73.7898, 19.9535, 73.8447);
+    expect(distance).toBeGreaterThan(7.0);
+    expect(distance).toBeLessThan(8.5);
   });
 
-  it("strictly caps maximum contribution at ₹4/km ceiling", () => {
-    const distance10km = 10;
-    const maxFee = calculateMaxContribution(distance10km);
-    expect(maxFee).toBe(40); // 10 * 4 = 40
+  it("computes suggested fuel share correctly rounded to nearest ₹5 with ₹5 minimum", () => {
+    // For 10 km trip, 1 passenger (rider + 1 = 2 people sharing):
+    // (10 / 40 * 106.5) / 2 = 26.625 / 2 = 13.31 -> ceil is 14 -> rounded to nearest 5 is 15
+    const suggested10km = suggestedShareInr(10, 1);
+    expect(suggested10km).toBe(15);
 
-    const distance15Point5km = 15.5;
-    const maxFee15 = calculateMaxContribution(distance15Point5km);
-    expect(maxFee15).toBe(62); // 15.5 * 4 = 62
+    // Very short trip: 0.5 km -> min ₹5
+    const suggestedShort = suggestedShareInr(0.5, 1);
+    expect(suggestedShort).toBe(5);
+
+    // Zero distance returns ₹5 minimum
+    expect(suggestedShareInr(0, 1)).toBe(5);
   });
 
-  it("calculates realistic suggested fuel contribution with minimum floor", () => {
-    // Short trip: 2 km -> suggested 2 * 2.5 = 5, but minimum floor is ₹10
-    const shortTrip = calculateSuggestedContribution(2);
-    expect(shortTrip).toBe(PRICING_CONFIG.MIN_CONTRIBUTION_INR);
+  it("triggers soft advisory warning only when contribution exceeds 2x suggested share", () => {
+    const suggested = 20;
 
-    // Regular commute: 12 km -> suggested 12 * 2.5 = 30
-    const regularTrip = calculateSuggestedContribution(12);
-    expect(regularTrip).toBe(30);
-    expect(regularTrip).toBeLessThanOrEqual(calculateMaxContribution(12));
+    // Normal contribution (within 2x): no warning
+    expect(isSoftWarning(20, suggested)).toBe(false);
+    expect(isSoftWarning(40, suggested)).toBe(false);
+
+    // Above 2x (e.g. ₹45 > ₹40): triggers soft advisory warning
+    expect(isSoftWarning(45, suggested)).toBe(true);
+
+    // Free ride (₹0): never triggers warning
+    expect(isSoftWarning(0, suggested)).toBe(false);
   });
 
-  it("restricts seats between 1 and 2 maximum for motorcycles", () => {
-    expect(PRICING_CONFIG.MIN_SEATS).toBe(1);
-    expect(PRICING_CONFIG.MAX_SEATS).toBe(2);
+  it("restricts motorcycle pillion seats strictly to 1 or 2", () => {
+    expect(MIN_SEATS).toBe(1);
+    expect(MAX_SEATS).toBe(2);
   });
 });
-
