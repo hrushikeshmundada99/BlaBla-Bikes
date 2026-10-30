@@ -38,3 +38,4 @@ describe("Storage & Magic Bytes Security", () => {
     expect(pathWithDots.includes("..")).toBe(false);
   });
 });
+

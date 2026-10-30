@@ -71,3 +71,4 @@ describe("Database RLS & Security Policies Verification", () => {
     expect(rlsSql).toContain("CREATE POLICY \"rider_docs_select_owner_or_admin\"");
   });
 });
+
