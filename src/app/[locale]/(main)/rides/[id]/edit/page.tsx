@@ -78,3 +78,4 @@ export default async function EditRidePage({ params }: EditRidePageProps) {
     </div>
   );
 }
+

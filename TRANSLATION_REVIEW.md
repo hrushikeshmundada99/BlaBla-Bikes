@@ -14,3 +14,4 @@ This document tracks specialized regional terminology, transport idioms, and loc
 | **Peer-to-peer Carpooling** | सहप्रवासी इंधन वाटप | गैर-व्यावसायिक ईंधन साझाकरण | Clarifies strict non-commercial, non-taxi status for RTO compliance. |
 
 All strings are strictly synchronized across `messages/en.json`, `messages/hi.json`, and `messages/mr.json`.
+

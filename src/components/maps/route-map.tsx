@@ -36,3 +36,4 @@ const DynamicRouteMap = dynamic(() => import("./route-map-inner"), {
 export function RouteMap(props: RouteMapProps) {
   return <DynamicRouteMap {...props} />;
 }
+

@@ -77,3 +77,4 @@ export const createRideSchema = z
   });
 
 export type CreateRideInput = z.infer<typeof createRideSchema>;
+

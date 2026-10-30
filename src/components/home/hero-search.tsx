@@ -11,6 +11,8 @@ export function HeroSearch() {
 
   const [fromLocation, setFromLocation] = React.useState("");
   const [toLocation, setToLocation] = React.useState("");
+  const [fromCoords, setFromCoords] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [toCoords, setToCoords] = React.useState<{ lat: number; lng: number } | null>(null);
   const [tripDate, setTripDate] = React.useState("");
 
   const handleSearch = (e: React.FormEvent) => {
@@ -18,6 +20,14 @@ export function HeroSearch() {
     const params = new URLSearchParams();
     if (fromLocation) params.set("from", fromLocation);
     if (toLocation) params.set("to", toLocation);
+    if (fromCoords) {
+      params.set("fromLat", fromCoords.lat.toString());
+      params.set("fromLng", fromCoords.lng.toString());
+    }
+    if (toCoords) {
+      params.set("toLat", toCoords.lat.toString());
+      params.set("toLng", toCoords.lng.toString());
+    }
     if (tripDate) params.set("date", tripDate);
 
     router.push(`/rides?${params.toString()}`);
@@ -52,7 +62,14 @@ export function HeroSearch() {
           <NashikAutocomplete
             id="search-from"
             value={fromLocation}
-            onChange={(val) => setFromLocation(val)}
+            onChange={(val, place) => {
+              setFromLocation(val);
+              if (place) {
+                setFromCoords({ lat: place.latitude, lng: place.longitude });
+              } else {
+                setFromCoords(null);
+              }
+            }}
             placeholder="Area or landmark (e.g. CBS)"
           />
         </div>
@@ -68,7 +85,14 @@ export function HeroSearch() {
           <NashikAutocomplete
             id="search-to"
             value={toLocation}
-            onChange={(val) => setToLocation(val)}
+            onChange={(val, place) => {
+              setToLocation(val);
+              if (place) {
+                setToCoords({ lat: place.latitude, lng: place.longitude });
+              } else {
+                setToCoords(null);
+              }
+            }}
             placeholder="Area or landmark (e.g. Canada Corner)"
           />
         </div>

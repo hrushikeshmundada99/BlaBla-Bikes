@@ -259,3 +259,4 @@ export const NASHIK_CURATED_PLACES: CuratedPlace[] = [
     description: "Northern suburban and institutional zone",
   },
 ];
+

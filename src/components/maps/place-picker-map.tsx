@@ -28,3 +28,4 @@ const DynamicPlacePickerMap = dynamic(() => import("./place-picker-map-inner"), 
 export function PlacePickerMap(props: PlacePickerMapProps) {
   return <DynamicPlacePickerMap {...props} />;
 }
+

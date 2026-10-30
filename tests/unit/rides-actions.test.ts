@@ -8,3 +8,4 @@ describe("Ride Actions & Hooks", () => {
     expect((globalThis as any).__lastCancelledRideId).toBe(testRideId);
   });
 });
+

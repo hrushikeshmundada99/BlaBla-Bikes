@@ -49,3 +49,4 @@ export function isSoftWarning(contributionInr: number, suggestedInr: number): bo
   if (contributionInr <= 0 || suggestedInr <= 0) return false;
   return contributionInr > suggestedInr * SOFT_WARN_MULTIPLIER;
 }
+

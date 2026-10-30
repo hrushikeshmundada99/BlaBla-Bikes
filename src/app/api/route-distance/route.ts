@@ -129,3 +129,4 @@ export async function GET(request: NextRequest) {
   setCachedRoute(cacheKey, result);
   return NextResponse.json(result);
 }
+

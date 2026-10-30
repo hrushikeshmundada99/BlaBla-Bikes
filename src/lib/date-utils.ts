@@ -63,3 +63,4 @@ export function formatRideDateTime(
     full: `${date}, ${time}`,
   };
 }
+

@@ -98,3 +98,34 @@ export function createPickerIcon(): L.DivIcon {
     popupAnchor: [0, -36],
   });
 }
+
+export function createRidePinIcon(price: number): L.DivIcon {
+  const isFree = price === 0;
+  return L.divIcon({
+    className: "custom-leaflet-ride-pin",
+    html: `
+      <div style="
+        background: ${isFree ? "#059669" : "#1853DB"};
+        color: white;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 700;
+        border: 2px solid white;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.25);
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        cursor: pointer;
+      ">
+        <span>🏍️</span>
+        <span>${isFree ? "Free" : "₹" + price}</span>
+      </div>
+    `,
+    iconSize: [52, 24],
+    iconAnchor: [26, 12],
+    popupAnchor: [0, -14],
+  });
+}
+

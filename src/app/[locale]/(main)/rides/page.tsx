@@ -5,6 +5,9 @@ import { searchRides, type SearchRidesParams } from "@/app/actions/rides";
 import { RideCard } from "@/components/rides/ride-card";
 import { RideSearchHeader } from "@/components/rides/ride-search-header";
 import { RideFilterBar } from "@/components/rides/ride-filter-bar";
+import { SearchRidesMap } from "@/components/maps/search-rides-map";
+import { NASHIK_CURATED_PLACES } from "@/data/nashik-places";
+import { normalizePlaceText } from "@/lib/geo";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Bike } from "lucide-react";
@@ -28,6 +31,24 @@ interface RidesPageProps {
   }>;
 }
 
+function findCuratedCoords(placeName?: string): { lat: number; lng: number } | null {
+  if (!placeName) return null;
+  const q = normalizePlaceText(placeName);
+  if (!q) return null;
+
+  for (const p of NASHIK_CURATED_PLACES) {
+    if (
+      normalizePlaceText(p.name).includes(q) ||
+      normalizePlaceText(p.nameHi).includes(q) ||
+      normalizePlaceText(p.nameMr).includes(q) ||
+      p.aliases.some((a) => normalizePlaceText(a).includes(q))
+    ) {
+      return { lat: p.latitude, lng: p.longitude };
+    }
+  }
+  return null;
+}
+
 export default async function RidesPage({ params, searchParams }: RidesPageProps) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -35,13 +56,44 @@ export default async function RidesPage({ params, searchParams }: RidesPageProps
   const sp = await searchParams;
   const page = sp.page ? parseInt(sp.page, 10) : 1;
 
+  // Resolve search from/to coordinates (from query params or curated places)
+  let resolvedFromLat = sp.fromLat ? parseFloat(sp.fromLat) : undefined;
+  let resolvedFromLng = sp.fromLng ? parseFloat(sp.fromLng) : undefined;
+  if ((!resolvedFromLat || !resolvedFromLng) && sp.from) {
+    const found = findCuratedCoords(sp.from);
+    if (found) {
+      resolvedFromLat = found.lat;
+      resolvedFromLng = found.lng;
+    }
+  }
+
+  let resolvedToLat = sp.toLat ? parseFloat(sp.toLat) : undefined;
+  let resolvedToLng = sp.toLng ? parseFloat(sp.toLng) : undefined;
+  if ((!resolvedToLat || !resolvedToLng) && sp.to) {
+    const found = findCuratedCoords(sp.to);
+    if (found) {
+      resolvedToLat = found.lat;
+      resolvedToLng = found.lng;
+    }
+  }
+
+  const fromPoint =
+    resolvedFromLat && resolvedFromLng
+      ? { lat: resolvedFromLat, lng: resolvedFromLng, name: sp.from || "Pickup" }
+      : null;
+
+  const toPoint =
+    resolvedToLat && resolvedToLng
+      ? { lat: resolvedToLat, lng: resolvedToLng, name: sp.to || "Destination" }
+      : null;
+
   const queryParams: SearchRidesParams = {
     from: sp.from,
     to: sp.to,
-    fromLat: sp.fromLat ? parseFloat(sp.fromLat) : undefined,
-    fromLng: sp.fromLng ? parseFloat(sp.fromLng) : undefined,
-    toLat: sp.toLat ? parseFloat(sp.toLat) : undefined,
-    toLng: sp.toLng ? parseFloat(sp.toLng) : undefined,
+    fromLat: resolvedFromLat,
+    fromLng: resolvedFromLng,
+    toLat: resolvedToLat,
+    toLng: resolvedToLng,
     date: sp.date,
     maxPrice: sp.maxPrice ? parseInt(sp.maxPrice, 10) : undefined,
     helmet: sp.helmet === "true",
@@ -86,10 +138,10 @@ export default async function RidesPage({ params, searchParams }: RidesPageProps
           initialFrom={sp.from || ""}
           initialTo={sp.to || ""}
           initialDate={sp.date || ""}
-          initialFromLat={sp.fromLat ? parseFloat(sp.fromLat) : 0}
-          initialFromLng={sp.fromLng ? parseFloat(sp.fromLng) : 0}
-          initialToLat={sp.toLat ? parseFloat(sp.toLat) : 0}
-          initialToLng={sp.toLng ? parseFloat(sp.toLng) : 0}
+          initialFromLat={resolvedFromLat || 0}
+          initialFromLng={resolvedFromLng || 0}
+          initialToLat={resolvedToLat || 0}
+          initialToLng={resolvedToLng || 0}
           locale={locale}
         />
       </div>
@@ -101,8 +153,17 @@ export default async function RidesPage({ params, searchParams }: RidesPageProps
           <RideFilterBar />
         </div>
 
-        {/* Right Column: Ride Results */}
+        {/* Right Column: Map + Ride Results */}
         <div className="lg:col-span-3 space-y-4">
+          {/* Leaflet Map: connects the two locations when searched, shows route & ride markers */}
+          <SearchRidesMap
+            from={fromPoint}
+            to={toPoint}
+            rides={rides}
+            locale={locale}
+            height="340px"
+          />
+
           <div className="flex items-center justify-between px-1">
             <h2 className="text-sm font-bold text-slate-800">
               {total} {total === 1 ? "Ride Available" : "Rides Available"}

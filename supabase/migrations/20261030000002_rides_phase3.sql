@@ -41,3 +41,4 @@ END;
 $$ LANGUAGE plpgsql IMMUTABLE STRICT;
 
 COMMENT ON FUNCTION haversine_distance_km IS 'Returns the Great Circle haversine distance in kilometers between two lat/lng points.';
+

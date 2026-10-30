@@ -77,3 +77,4 @@ export function normalizePlaceText(text: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
