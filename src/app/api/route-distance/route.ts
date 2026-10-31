@@ -3,10 +3,11 @@ import { z } from "zod";
 import { haversineKm } from "@/lib/geo";
 import { checkRateLimit } from "@/lib/ratelimit";
 
-interface RouteDistanceResponse {
+export interface RouteDistanceResponse {
   distanceKm: number;
   durationMinutes: number;
   approximate: boolean;
+  geometry?: [number, number][];
 }
 
 // In-memory cache for computed routes (10 min TTL)
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
     const timeout = setTimeout(() => controller.abort(), 3000);
 
     // OSRM expects: {longitude},{latitude}
-    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=false`;
+    const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
 
     const res = await fetch(osrmUrl, {
       signal: controller.signal,
@@ -100,10 +101,24 @@ export async function GET(request: NextRequest) {
         const distanceKm = Math.round((route.distance / 1000) * 10) / 10;
         const durationMinutes = Math.max(1, Math.round(route.duration / 60));
 
+        let geometry: [number, number][] = [];
+        if (route.geometry?.coordinates && Array.isArray(route.geometry.coordinates)) {
+          geometry = route.geometry.coordinates.map(
+            ([lng, lat]: [number, number]) => [lat, lng] as [number, number]
+          );
+        }
+        if (geometry.length === 0) {
+          geometry = [
+            [fromLat, fromLng],
+            [toLat, toLng],
+          ];
+        }
+
         const result: RouteDistanceResponse = {
           distanceKm,
           durationMinutes,
           approximate: false,
+          geometry,
         };
 
         setCachedRoute(cacheKey, result);
@@ -124,6 +139,10 @@ export async function GET(request: NextRequest) {
     distanceKm,
     durationMinutes,
     approximate: true,
+    geometry: [
+      [fromLat, fromLng],
+      [toLat, toLng],
+    ],
   };
 
   setCachedRoute(cacheKey, result);

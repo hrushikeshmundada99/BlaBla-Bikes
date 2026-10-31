@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -41,10 +41,12 @@ interface SearchRidesMapInnerProps {
 function MapController({
   from,
   to,
+  routeCoordinates,
   rides,
 }: {
   from?: { lat: number; lng: number } | null;
   to?: { lat: number; lng: number } | null;
+  routeCoordinates?: [number, number][];
   rides: RideWithRider[];
 }) {
   const map = useMap();
@@ -54,8 +56,11 @@ function MapController({
       map.invalidateSize();
     }, 150);
 
-    // If both from and to are present, fit bounds to the search route
-    if (from && to && from.lat && from.lng && to.lat && to.lng) {
+    // If road coordinates are available, fit bounds precisely to the shortest road path
+    if (routeCoordinates && routeCoordinates.length > 1) {
+      const bounds = L.latLngBounds(routeCoordinates);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    } else if (from && to && from.lat && from.lng && to.lat && to.lng) {
       const bounds = L.latLngBounds([
         [from.lat, from.lng],
         [to.lat, to.lng],
@@ -94,7 +99,7 @@ function MapController({
       container.removeEventListener("click", enableZoom);
       container.removeEventListener("mouseleave", disableZoom);
     };
-  }, [map, from, to, rides]);
+  }, [map, from, to, routeCoordinates, rides]);
 
   return null;
 }
@@ -121,14 +126,45 @@ export default function SearchRidesMapInner({
     from && to && from.lat && from.lng && to.lat && to.lng
   );
 
-  const polylinePositions = useMemo<[number, number][]>(() => {
-    if (hasRoute && from && to) {
-      return [
-        [from.lat, from.lng],
-        [to.lat, to.lng],
-      ];
+  const [roadCoordinates, setRoadCoordinates] = useState<[number, number][]>([]);
+  const [routeStats, setRouteStats] = useState<{ distanceKm: number; durationMinutes: number } | null>(null);
+
+  // Fetch shortest road path from routing API when pickup & dropoff are selected
+  useEffect(() => {
+    if (!hasRoute || !from || !to) {
+      setRoadCoordinates([]);
+      setRouteStats(null);
+      return;
     }
-    return [];
+
+    // Set immediate direct line fallback while loading the driving road network
+    setRoadCoordinates([
+      [from.lat, from.lng],
+      [to.lat, to.lng],
+    ]);
+
+    const controller = new AbortController();
+    fetch(
+      `/api/route-distance?fromLat=${from.lat}&fromLng=${from.lng}&toLat=${to.lat}&toLng=${to.lng}`,
+      { signal: controller.signal }
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.geometry) && data.geometry.length > 0) {
+          setRoadCoordinates(data.geometry);
+        }
+        if (typeof data.distanceKm === "number") {
+          setRouteStats({
+            distanceKm: data.distanceKm,
+            durationMinutes: data.durationMinutes || 0,
+          });
+        }
+      })
+      .catch(() => {
+        // Keeps straight line fallback on abort/error
+      });
+
+    return () => controller.abort();
   }, [hasRoute, from, to]);
 
   return (
@@ -143,7 +179,12 @@ export default function SearchRidesMapInner({
         scrollWheelZoom={false}
       >
         <TileLayer url={tileUrl} attribution={attribution} />
-        <MapController from={from} to={to} rides={rides} />
+        <MapController
+          from={from}
+          to={to}
+          routeCoordinates={roadCoordinates}
+          rides={rides}
+        />
 
         {/* 1. Searched Route: Origin Pin A */}
         {from && from.lat && from.lng && (
@@ -151,7 +192,7 @@ export default function SearchRidesMapInner({
             <Popup>
               <div className="text-xs font-semibold text-slate-800 p-1">
                 <span className="text-[#1853DB] font-bold block mb-0.5">
-                  Pickup Search
+                  Pickup Location
                 </span>
                 {from.name || "Selected Pickup"}
               </div>
@@ -165,25 +206,40 @@ export default function SearchRidesMapInner({
             <Popup>
               <div className="text-xs font-semibold text-slate-800 p-1">
                 <span className="text-emerald-600 font-bold block mb-0.5">
-                  Destination Drop
+                  Dropoff Location
                 </span>
-                {to.name || "Selected Drop"}
+                {to.name || "Selected Dropoff"}
               </div>
             </Popup>
           </Marker>
         )}
 
-        {/* 3. Connecting Polyline between searched points */}
-        {hasRoute && (
-          <Polyline
-            positions={polylinePositions}
-            pathOptions={{
-              color: "#1853DB",
-              weight: 4,
-              opacity: 0.85,
-              dashArray: "7, 7",
-            }}
-          />
+        {/* 3. Shortest Road Path: Bold Red Line */}
+        {hasRoute && roadCoordinates.length > 0 && (
+          <>
+            {/* Outer subtle casing to make the red road line stand out */}
+            <Polyline
+              positions={roadCoordinates}
+              pathOptions={{
+                color: "#991B1B",
+                weight: 8,
+                opacity: 0.25,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+            {/* Main bold solid red line tracing the shortest road network */}
+            <Polyline
+              positions={roadCoordinates}
+              pathOptions={{
+                color: "#DC2626",
+                weight: 5,
+                opacity: 0.95,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+          </>
         )}
 
         {/* 4. Available Ride Markers across Nashik */}
@@ -237,12 +293,20 @@ export default function SearchRidesMapInner({
         <div className="bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-xl shadow-md border border-slate-200/80 text-xs text-slate-800 flex items-center gap-2 pointer-events-auto">
           {hasRoute ? (
             <>
-              <Navigation className="w-3.5 h-3.5 text-[#1853DB]" />
+              <Navigation className="w-3.5 h-3.5 text-red-600" />
               <span className="font-bold text-slate-900">
                 {from?.name?.split(",")[0]} → {to?.name?.split(",")[0]}
               </span>
+              {routeStats && (
+                <>
+                  <span className="text-slate-400">·</span>
+                  <span className="font-medium text-slate-700">
+                    {routeStats.distanceKm} km ({routeStats.durationMinutes} min)
+                  </span>
+                </>
+              )}
               <span className="text-slate-400">·</span>
-              <span className="text-[#1853DB] font-medium">
+              <span className="text-red-600 font-semibold">
                 {rides.length} {rides.length === 1 ? "ride available" : "rides available"}
               </span>
             </>
@@ -261,8 +325,8 @@ export default function SearchRidesMapInner({
         </div>
 
         <div className="hidden sm:flex items-center gap-1.5 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] text-slate-500 border border-slate-200 shadow-sm pointer-events-auto">
-          <span className="w-2 h-2 rounded-full bg-[#1853DB]"></span>
-          <span>Click map to zoom</span>
+          <span className="w-2 h-2 rounded-full bg-red-600"></span>
+          <span>Road route</span>
         </div>
       </div>
     </div>

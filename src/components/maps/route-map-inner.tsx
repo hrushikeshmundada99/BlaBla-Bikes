@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -32,9 +32,11 @@ interface RouteMapInnerProps {
 function MapController({
   from,
   to,
+  routeCoordinates,
 }: {
   from: { lat: number; lng: number };
   to: { lat: number; lng: number };
+  routeCoordinates?: [number, number][];
 }) {
   const map = useMap();
 
@@ -44,12 +46,17 @@ function MapController({
       map.invalidateSize();
     }, 100);
 
-    // Auto-fit bounds
-    const bounds = L.latLngBounds([
-      [from.lat, from.lng],
-      [to.lat, to.lng],
-    ]);
-    map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    // Auto-fit bounds along the shortest road path
+    if (routeCoordinates && routeCoordinates.length > 1) {
+      const bounds = L.latLngBounds(routeCoordinates);
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    } else {
+      const bounds = L.latLngBounds([
+        [from.lat, from.lng],
+        [to.lat, to.lng],
+      ]);
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
 
     // Enable scroll-wheel zoom on click, disable on blur/mouseout to avoid hijacking mobile scroll
     map.scrollWheelZoom.disable();
@@ -65,7 +72,7 @@ function MapController({
       container.removeEventListener("click", enableZoom);
       container.removeEventListener("mouseleave", disableZoom);
     };
-  }, [map, from.lat, from.lng, to.lat, to.lng]);
+  }, [map, from, to, routeCoordinates]);
 
   return null;
 }
@@ -86,13 +93,30 @@ export default function RouteMapInner({
   const originIcon = useMemo(() => createOriginIcon(), []);
   const destIcon = useMemo(() => createDestinationIcon(), []);
 
-  const polylinePositions = useMemo<[number, number][]>(
-    () => [
-      [from.lat, from.lng],
-      [to.lat, to.lng],
-    ],
-    [from.lat, from.lng, to.lat, to.lng]
-  );
+  const [roadCoordinates, setRoadCoordinates] = useState<[number, number][]>([
+    [from.lat, from.lng],
+    [to.lat, to.lng],
+  ]);
+
+  // Fetch shortest road path
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(
+      `/api/route-distance?fromLat=${from.lat}&fromLng=${from.lng}&toLat=${to.lat}&toLng=${to.lng}`,
+      { signal: controller.signal }
+    )
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.geometry) && data.geometry.length > 0) {
+          setRoadCoordinates(data.geometry);
+        }
+      })
+      .catch(() => {
+        // Keeps straight line fallback
+      });
+
+    return () => controller.abort();
+  }, [from.lat, from.lng, to.lat, to.lng]);
 
   return (
     <div
@@ -106,7 +130,7 @@ export default function RouteMapInner({
         scrollWheelZoom={false}
       >
         <TileLayer url={tileUrl} attribution={attribution} />
-        <MapController from={from} to={to} />
+        <MapController from={from} to={to} routeCoordinates={roadCoordinates} />
 
         <Marker position={[from.lat, from.lng]} icon={originIcon}>
           <Popup>
@@ -124,15 +148,33 @@ export default function RouteMapInner({
           </Popup>
         </Marker>
 
-        <Polyline
-          positions={polylinePositions}
-          pathOptions={{
-            color: "#1853DB",
-            weight: 4,
-            opacity: 0.8,
-            dashArray: "6, 6",
-          }}
-        />
+        {/* Shortest Road Path: Bold Red Line */}
+        {roadCoordinates.length > 0 && (
+          <>
+            {/* Subtle outer casing */}
+            <Polyline
+              positions={roadCoordinates}
+              pathOptions={{
+                color: "#991B1B",
+                weight: 8,
+                opacity: 0.25,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+            {/* Bold solid red line along roads */}
+            <Polyline
+              positions={roadCoordinates}
+              pathOptions={{
+                color: "#DC2626",
+                weight: 5,
+                opacity: 0.95,
+                lineCap: "round",
+                lineJoin: "round",
+              }}
+            />
+          </>
+        )}
       </MapContainer>
     </div>
   );

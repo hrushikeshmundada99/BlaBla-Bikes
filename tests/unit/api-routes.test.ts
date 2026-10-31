@@ -85,12 +85,24 @@ describe("API Routes: Places and Route Distance", () => {
       expect(data.durationMinutes).toBeGreaterThan(0);
     });
 
-    it("returns OSRM distance and marks approximate: false on successful upstream response", async () => {
+    it("returns OSRM distance, road geometry and marks approximate: false on successful upstream response", async () => {
       vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
         ok: true,
         json: async () => ({
           code: "Ok",
-          routes: [{ distance: 5400, duration: 600 }],
+          routes: [
+            {
+              distance: 5400,
+              duration: 600,
+              geometry: {
+                type: "LineString",
+                coordinates: [
+                  [73.7898, 19.9975],
+                  [73.7634, 20.0102],
+                ],
+              },
+            },
+          ],
         }),
       } as Response);
 
@@ -104,6 +116,8 @@ describe("API Routes: Places and Route Distance", () => {
       expect(data.distanceKm).toBe(5.4);
       expect(data.durationMinutes).toBe(10);
       expect(data.approximate).toBe(false);
+      expect(Array.isArray(data.geometry)).toBe(true);
+      expect(data.geometry[0]).toEqual([19.9975, 73.7898]);
     });
   });
 });
